@@ -11,13 +11,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import namnn.englishfloating.Service.FloatingViewService
-import namnn.englishfloating.adapter.LanguageAdapter
+import namnn.englishfloating.adapter.VocabularyAdapter
 import namnn.englishfloating.database.AppDatabase
 import namnn.englishfloating.database.dao.VocabularyDAO
 import namnn.englishfloating.database.entity.Vocabulary
@@ -26,7 +27,9 @@ import namnn.englishfloating.database.entity.Vocabulary
 class MainActivity : AppCompatActivity() {
     private val CODE_DRAW_OVER_OTHER_APP_PERMISSION = 2048
 
-    private lateinit var langAdapter: LanguageAdapter
+    private lateinit var viewGroup: ViewGroup
+
+    private lateinit var langAdapter: VocabularyAdapter
     private lateinit var vocabularies: List<Vocabulary>
     private lateinit var vocabularyDAO: VocabularyDAO
 
@@ -34,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val viewGroup =
+        viewGroup =
             (findViewById<View>(android.R.id.content) as ViewGroup).getChildAt(0) as ViewGroup
 
         // Initial
@@ -60,7 +63,7 @@ class MainActivity : AppCompatActivity() {
 
         vocabularies = vocabularyDAO.getALL()
 
-        langAdapter = LanguageAdapter(vocabularies, onDeleteListener = {
+        langAdapter = VocabularyAdapter(vocabularies, onDeleteListener = {
             vocabularyDAO.delete(it)
 
             vocabularies = vocabularyDAO.getALL()
@@ -103,7 +106,21 @@ class MainActivity : AppCompatActivity() {
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
             )
-            startActivityForResult(intent, CODE_DRAW_OVER_OTHER_APP_PERMISSION)
+            intent.putExtra("requestCode", CODE_DRAW_OVER_OTHER_APP_PERMISSION)
+            val previewRequest =
+                registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                    if (it.resultCode == Activity.RESULT_OK) {
+                        initializeView()
+                    } else { //Permission is not available
+                        Toast.makeText(
+                            this,
+                            "Draw over other app permission not available. Closing the application",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        finish()
+                    }
+                }
+            previewRequest.launch(intent)
         } else {
             initializeView()
         }
@@ -111,30 +128,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeView() {
         iv_start_floating.setOnClickListener {
+            if (vocabularies.count() < 4) {
+                viewGroup.snack("Need more than 4 vocabularies to open floating test")
+                return@setOnClickListener
+            }
             startService(Intent(this@MainActivity, FloatingViewService::class.java))
             finish()
-        }
-    }
-
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?
-    ) {
-        if (requestCode == CODE_DRAW_OVER_OTHER_APP_PERMISSION) {
-            //Check if the permission is granted or not.
-            if (resultCode == Activity.RESULT_OK) {
-                initializeView()
-            } else { //Permission is not available
-                Toast.makeText(
-                    this,
-                    "Draw over other app permission not available. Closing the application",
-                    Toast.LENGTH_SHORT
-                ).show()
-                finish()
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data)
         }
     }
 

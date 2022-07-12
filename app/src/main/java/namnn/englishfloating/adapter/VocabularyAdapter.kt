@@ -9,10 +9,10 @@ import androidx.recyclerview.widget.RecyclerView
 import namnn.englishfloating.database.entity.Vocabulary
 import namnn.englishfloating.R
 
-class LanguageAdapter(private var dataSet: List<Vocabulary>,
-                      private val onDeleteListener: (vocabulary: Vocabulary) -> Unit
+class VocabularyAdapter(private var dataSet: List<Vocabulary>,
+                        private val onDeleteListener: (vocabulary: Vocabulary) -> Unit
 ) :
-    RecyclerView.Adapter<LanguageAdapter.ViewHolder>() {
+    RecyclerView.Adapter<VocabularyAdapter.ViewHolder>() {
 
     public fun setData(newData: List<Vocabulary>) {
         dataSet = newData;

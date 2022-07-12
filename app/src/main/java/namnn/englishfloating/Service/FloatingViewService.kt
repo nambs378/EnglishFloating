@@ -67,7 +67,7 @@ class FloatingViewService : Service() {
     var mWidthWidget = 0
     var mHeightWidget = 0
 
-    private lateinit var currentVocabulary: Vocabulary
+    private var currentVocabulary: Vocabulary? = null
     private lateinit var textSelected: String
     private lateinit var answerButtonList: List<TextView>
     private lateinit var vocabularyDAO: VocabularyDAO
@@ -480,6 +480,81 @@ class FloatingViewService : Service() {
         TODO("Not yet implemented")
     }
 
+    private fun zoomImageClose(b: Boolean, imageClose: ImageView) {
+        if (b) {
+            val layoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(
+                (imageCloseWidth * 1.2).toInt(),
+                (imageCloseHeight * 1.2).toInt()
+            )
+            imageClose.layoutParams = layoutParams
+        } else {
+            val layoutParams: LinearLayout.LayoutParams =
+                LinearLayout.LayoutParams(imageCloseWidth, imageCloseHeight)
+            imageClose.layoutParams = layoutParams
+        }
+    }
+
+    private fun getQuestion(tv: TextView, vocabularyDAO: VocabularyDAO) {
+        currentVocabulary = if (currentVocabulary == null){
+            vocabularyDAO.getRandomEnglish()
+        } else {
+            vocabularyDAO.getRandomEnglishAvoidId(currentVocabulary!!.id!!)
+        }
+        currentVocabulary = vocabularyDAO.getRandomEnglish()
+//        Handler(Looper.getMainLooper()).post { tv.text = currentLanguage.english }
+        tv.text = currentVocabulary!!.english
+        val wrongLanguage =
+            vocabularyDAO.getRandomEnglishWithoutCurrentEnglish(currentVocabulary!!.id!!)
+        wrongLanguage.add(currentVocabulary!!.vietnamese!!)
+        wrongLanguage.shuffle()
+        for (i in wrongLanguage.indices) {
+            answerButtonList[i].text = wrongLanguage[i]
+        }
+    }
+
+    private fun checkQuestion() {
+        val handler = Handler(Looper.getMainLooper())
+        handler.postDelayed({
+            for (item in answerButtonList) {
+                if (currentVocabulary!!.vietnamese.equals(item.text.toString())) {
+                    setStateBtnAnswer(item, ButtonState.CORRECT)
+                }
+                setAllBtnDefault()
+            }
+        }, 500)
+    }
+
+    private fun setAllBtnDefault() {
+        val handler = Handler(Looper.getMainLooper())
+        handler.postDelayed({
+            for (item in answerButtonList) {
+                setStateBtnAnswer(item, ButtonState.DEFAULT)
+                getQuestion(englishTv, vocabularyDAO)
+            }
+        }, 1500)
+    }
+
+    private fun setStateBtnAnswer(btn: TextView, state: ButtonState) {
+        when (state) {
+            ButtonState.DEFAULT -> {
+                btn.background =
+                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_unselected, null)
+            }
+            ButtonState.SELECTED -> {
+                btn.background =
+                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_selected, null)
+            }
+            ButtonState.WRONG -> {
+                btn.background =
+                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_wrong, null)
+            }
+            ButtonState.CORRECT -> {
+                btn.background =
+                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_correct, null)
+            }
+        }
+    }
+
     private fun initLayoutParams() {
         //Add the view to the window.
         floatViewParams = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -534,76 +609,6 @@ class FloatingViewService : Service() {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
             )
-        }
-    }
-
-    private fun zoomImageClose(b: Boolean, imageClose: ImageView) {
-        if (b) {
-            val layoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(
-                (imageCloseWidth * 1.2).toInt(),
-                (imageCloseHeight * 1.2).toInt()
-            )
-            imageClose.layoutParams = layoutParams
-        } else {
-            val layoutParams: LinearLayout.LayoutParams =
-                LinearLayout.LayoutParams(imageCloseWidth, imageCloseHeight)
-            imageClose.layoutParams = layoutParams
-        }
-    }
-
-    private fun getQuestion(tv: TextView, vocabularyDAO: VocabularyDAO) {
-        currentVocabulary = vocabularyDAO.getRandomEnglish()
-//        Handler(Looper.getMainLooper()).post { tv.text = currentLanguage.english }
-        tv.text = currentVocabulary.english
-        val wrongLanguage =
-            vocabularyDAO.getRandomEnglishWithoutCurrentEnglish(currentVocabulary.id!!)
-        wrongLanguage.add(currentVocabulary.vietnamese!!)
-        wrongLanguage.shuffle()
-        for (i in wrongLanguage.indices) {
-            answerButtonList[i].text = wrongLanguage[i]
-        }
-    }
-
-    private fun checkQuestion() {
-        val handler = Handler(Looper.getMainLooper())
-        handler.postDelayed({
-            for (item in answerButtonList) {
-                if (currentVocabulary.vietnamese.equals(item.text.toString())) {
-                    setStateBtnAnswer(item, ButtonState.CORRECT)
-                }
-                setAllBtnDefault()
-            }
-        }, 500)
-    }
-
-    private fun setAllBtnDefault() {
-        val handler = Handler(Looper.getMainLooper())
-        handler.postDelayed({
-            for (item in answerButtonList) {
-                setStateBtnAnswer(item, ButtonState.DEFAULT)
-                getQuestion(englishTv, vocabularyDAO)
-            }
-        }, 1500)
-    }
-
-    private fun setStateBtnAnswer(btn: TextView, state: ButtonState) {
-        when (state) {
-            ButtonState.DEFAULT -> {
-                btn.background =
-                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_unselected, null)
-            }
-            ButtonState.SELECTED -> {
-                btn.background =
-                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_selected, null)
-            }
-            ButtonState.WRONG -> {
-                btn.background =
-                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_wrong, null)
-            }
-            ButtonState.CORRECT -> {
-                btn.background =
-                    ResourcesCompat.getDrawable(resources, R.drawable.bg_btn_correct, null)
-            }
         }
     }
 }
