@@ -49,13 +49,15 @@
             android:layout_height="wrap_content"
             android:layout_weight="3"
             android:text="English"
-            android:textColor="@color/black"
-            android:textSize="16sp" />
+            android:textColor="@color/white"
+            android:textSize="18sp" />
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_english"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:inputType="text"
             android:layout_weight="7" />
 
     </LinearLayout>
@@ -72,14 +74,15 @@
             android:layout_height="wrap_content"
             android:layout_weight="3"
             android:text="Vietnamese"
-            android:textColor="@color/black"
-
-            android:textSize="16sp" />
+            android:textColor="@color/white"
+            android:textSize="18sp" />
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_vietnamese"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:inputType="text"
             android:layout_weight="7" />
 
     </LinearLayout>
