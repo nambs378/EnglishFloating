@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="image_close_width">55dp</dimen>
+    <dimen name="image_close_height">55dp</dimen>
+    <dimen name="background_gradient_close_height">180dp</dimen>
+
+</resources>
