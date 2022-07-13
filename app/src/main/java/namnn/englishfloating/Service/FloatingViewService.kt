@@ -2,10 +2,14 @@ package namnn.englishfloating.Service
 
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.graphics.Path
 import android.graphics.PixelFormat
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -16,10 +20,8 @@ import android.view.View.OnTouchListener
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
+import androidx.core.app.NotificationCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.room.Room
 import androidx.viewpager2.widget.ViewPager2
@@ -71,18 +73,56 @@ class FloatingViewService : Service() {
     private lateinit var textSelected: String
     private lateinit var answerButtonList: List<TextView>
     private lateinit var vocabularyDAO: VocabularyDAO
+
+    // View
     private lateinit var englishTv: TextView
+    private lateinit var ivDot: ImageView
+    private lateinit var testCountTv: TextView
 
     private var isFloatingViewInImageClose = false
 
     private lateinit var animImageCloseZoomIn: Animation
     private lateinit var animImageCloseZoomOut: Animation
+
+    private lateinit var floatingStartSound: MediaPlayer
+    private lateinit var successSound: MediaPlayer
+
     private var animRunning = false
     private var isExpanded = false
+
+    private var maxTestCount = 10
+    private var currentTestCount = 0
+    private var isCheckQuestion = false
 
     @SuppressLint("NewApi")
     override fun onCreate() {
         super.onCreate()
+
+        if (Build.VERSION.SDK_INT >= 26) {
+            val CHANNEL_ID = "my_channel_01"
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Channel human readable title",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+
+
+            val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Vocabulary test")
+                .setSmallIcon(R.drawable.ic_island_forest)
+                .setContentText("Time to take the vocabulary test").build()
+            notificationManager.notify(1, notification)
+            startForeground(1, notification)
+        }
+
+
+        successSound = MediaPlayer.create(this, R.raw.sound_success)
+        floatingStartSound = MediaPlayer.create(this, R.raw.sound_start)
+        floatingStartSound.start()
+
         mFloatingView = LayoutInflater.from(this).inflate(R.layout.layout_floating_widget, null);
 
         initLayoutParams()
@@ -178,10 +218,18 @@ class FloatingViewService : Service() {
               stopSelf()
           }*/
 
+        val homeButton = mFloatingView.findViewById<View>(R.id.btn_home) as Button
+        homeButton.setOnClickListener {
+            val intent = Intent("android.intent.category.LAUNCHER")
+            intent.setClassName("namnn.englishfloating", "namnn.englishfloating.MainActivity");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        }
 
         //Set the close button
-        val closeButton = mFloatingView.findViewById<View>(R.id.close_button) as Button
+        val closeButton = mFloatingView.findViewById<View>(R.id.btn_close) as Button
         closeButton.setOnClickListener {
+            if (isCheckQuestion) return@setOnClickListener
             collapsedView.visibility = View.VISIBLE
             expandedView.visibility = View.GONE
             isExpanded = false
@@ -194,6 +242,11 @@ class FloatingViewService : Service() {
         vocabularyDAO = db.languageDao()
 
         englishTv = mFloatingView.findViewById<View>(R.id.floating_tv_english) as TextView
+        testCountTv = mFloatingView.findViewById<View>(R.id.floating_tv_test_count) as TextView
+        ivDot = mFloatingView.findViewById<View>(R.id.iv_dot) as ImageView
+
+        ivDot.visibility = View.VISIBLE
+
         val refreshButton = mFloatingView.findViewById<View>(R.id.refresh_button) as Button
         val answerA = mFloatingView.findViewById<View>(R.id.answer_a) as TextView
         val answerB = mFloatingView.findViewById<View>(R.id.answer_b) as TextView
@@ -202,30 +255,34 @@ class FloatingViewService : Service() {
 
         answerButtonList = listOf(answerA, answerB, answerC, answerD)
 
-
         refreshButton.setOnClickListener {
+            if (isCheckQuestion) return@setOnClickListener
             getQuestion(englishTv, vocabularyDAO)
         }
 
         answerA.setOnClickListener {
+            if (isCheckQuestion) return@setOnClickListener
             setStateBtnAnswer(answerA, ButtonState.SELECTED)
             textSelected = answerA.text.toString()
             checkQuestion()
         }
 
         answerB.setOnClickListener {
+            if (isCheckQuestion) return@setOnClickListener
             setStateBtnAnswer(answerB, ButtonState.SELECTED)
             textSelected = answerB.text.toString()
             checkQuestion()
         }
 
         answerC.setOnClickListener {
+            if (isCheckQuestion) return@setOnClickListener
             setStateBtnAnswer(answerC, ButtonState.SELECTED)
             textSelected = answerC.text.toString()
             checkQuestion()
         }
 
         answerD.setOnClickListener {
+            if (isCheckQuestion) return@setOnClickListener
             setStateBtnAnswer(answerD, ButtonState.SELECTED)
             textSelected = answerD.text.toString()
             checkQuestion()
@@ -399,6 +456,7 @@ class FloatingViewService : Service() {
                                         Log.d("AAAAAAAAAAAAAAA", isExpanded.toString())
                                         getQuestion(englishTv, vocabularyDAO)
                                         isExpanded = true
+                                        ivDot.visibility = View.GONE
                                     }
                                 }
                             }
@@ -495,7 +553,7 @@ class FloatingViewService : Service() {
     }
 
     private fun getQuestion(tv: TextView, vocabularyDAO: VocabularyDAO) {
-        currentVocabulary = if (currentVocabulary == null){
+        currentVocabulary = if (currentVocabulary == null) {
             vocabularyDAO.getRandomEnglish()
         } else {
             vocabularyDAO.getRandomEnglishAvoidId(currentVocabulary!!.id!!)
@@ -513,11 +571,33 @@ class FloatingViewService : Service() {
     }
 
     private fun checkQuestion() {
+        isCheckQuestion = true
         val handler = Handler(Looper.getMainLooper())
         handler.postDelayed({
             for (item in answerButtonList) {
-                if (currentVocabulary!!.vietnamese.equals(item.text.toString())) {
+                val answerText = item.text.toString()
+                if (currentVocabulary!!.vietnamese.equals(answerText)) {
                     setStateBtnAnswer(item, ButtonState.CORRECT)
+                    if (textSelected == answerText) {
+                        // select correct
+                        successSound.start()
+                        currentTestCount++
+                        testCountTv.text =  "${currentTestCount}/${maxTestCount}"
+                        if (maxTestCount == currentTestCount) {
+                            // end test
+                            stopSelf()
+                            currentTestCount = 0
+                        }
+                        val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
+                            currentVocabulary!!.wrongCount - 1
+                        } else {
+                            0
+                        }
+                        vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+                    } else {
+                        val newWrongCount = currentVocabulary!!.wrongCount + 1
+                        vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+                    }
                 }
                 setAllBtnDefault()
             }
@@ -531,6 +611,7 @@ class FloatingViewService : Service() {
                 setStateBtnAnswer(item, ButtonState.DEFAULT)
                 getQuestion(englishTv, vocabularyDAO)
             }
+            isCheckQuestion = false
         }, 1500)
     }
 

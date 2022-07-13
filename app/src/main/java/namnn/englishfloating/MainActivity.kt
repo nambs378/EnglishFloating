@@ -1,8 +1,11 @@
 package namnn.englishfloating
 
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -22,16 +25,20 @@ import namnn.englishfloating.adapter.VocabularyAdapter
 import namnn.englishfloating.database.AppDatabase
 import namnn.englishfloating.database.dao.VocabularyDAO
 import namnn.englishfloating.database.entity.Vocabulary
+import namnn.englishfloating.service.MyStartServiceReceiver
 
 
 class MainActivity : AppCompatActivity() {
     private val CODE_DRAW_OVER_OTHER_APP_PERMISSION = 2048
+    val br: BroadcastReceiver = MyStartServiceReceiver()
 
     private lateinit var viewGroup: ViewGroup
 
     private lateinit var langAdapter: VocabularyAdapter
     private lateinit var vocabularies: List<Vocabulary>
     private lateinit var vocabularyDAO: VocabularyDAO
+
+    private var isSortWrongCount = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                     snackTxt = "English and Vietnamese cannot be left blank"
                 } else {
                     val newLang =
-                        Vocabulary(null, et_english.text.toString(), et_vietnamese.text.toString())
+                        Vocabulary(null, et_english.text.toString(), et_vietnamese.text.toString(), 0)
                     vocabularyDAO.insert(newLang)
 
                     vocabularies = vocabularyDAO.getALL()
@@ -97,6 +104,20 @@ class MainActivity : AppCompatActivity() {
             clearEt()
             viewGroup.snack(snackTxt)
             closeKeyboard()
+        }
+
+        btn_sort_by_wrong_count.setOnClickListener {
+            isSortWrongCount = !isSortWrongCount
+
+            if (isSortWrongCount) {
+                vocabularies = vocabularyDAO.getALLOrderByWrongCount()
+                iv_line.visibility = View.INVISIBLE
+            } else {
+                vocabularies = vocabularyDAO.getALL()
+                iv_line.visibility = View.VISIBLE
+            }
+            langAdapter.setData(vocabularies)
+            langAdapter.notifyDataSetChanged()
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
@@ -124,16 +145,42 @@ class MainActivity : AppCompatActivity() {
         } else {
             initializeView()
         }
+
+        iv_start_scheduler.setOnClickListener {
+            if (vocabularies.count() < 4) {
+                viewGroup.snack("Need more than 4 vocabularies to start scheduler test")
+                return@setOnClickListener
+            }
+            val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION).apply {
+                addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
+            }
+            try {
+                registerReceiver(br, filter)
+            } catch (e: IllegalArgumentException) {
+                e.printStackTrace()
+            }
+            viewGroup.snack("Start job scheduler for float")
+        }
+
+        tv_stop_scheduler.setOnClickListener {
+            try {
+                unregisterReceiver(br)
+            } catch (e: IllegalArgumentException) {
+                e.printStackTrace()
+            }
+
+            viewGroup.snack("Stop job scheduler for float")
+        }
     }
 
     private fun initializeView() {
         iv_start_floating.setOnClickListener {
             if (vocabularies.count() < 4) {
-                viewGroup.snack("Need more than 4 vocabularies to open floating test")
+                viewGroup.snack("Need more than 4 vocabularies to start floating test")
                 return@setOnClickListener
             }
             startService(Intent(this@MainActivity, FloatingViewService::class.java))
-            finish()
+//            finish()
         }
     }
 

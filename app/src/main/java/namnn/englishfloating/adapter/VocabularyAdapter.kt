@@ -9,8 +9,9 @@ import androidx.recyclerview.widget.RecyclerView
 import namnn.englishfloating.database.entity.Vocabulary
 import namnn.englishfloating.R
 
-class VocabularyAdapter(private var dataSet: List<Vocabulary>,
-                        private val onDeleteListener: (vocabulary: Vocabulary) -> Unit
+class VocabularyAdapter(
+    private var dataSet: List<Vocabulary>,
+    private val onDeleteListener: (vocabulary: Vocabulary) -> Unit
 ) :
     RecyclerView.Adapter<VocabularyAdapter.ViewHolder>() {
 
@@ -26,13 +27,14 @@ class VocabularyAdapter(private var dataSet: List<Vocabulary>,
         var tvEnglish: TextView = view.findViewById(R.id.tv_item_english)
         var tvVietnamese: TextView = view.findViewById(R.id.tv_item_vietnamese)
         var ivDelete: ImageView = view.findViewById(R.id.iv_delete)
+        var tvWrongCount: TextView = view.findViewById(R.id.tv_item_wrong_count)
     }
 
     // Create new views (invoked by the layout manager)
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
         // Create a new view, which defines the UI of the list item
         val view = LayoutInflater.from(viewGroup.context)
-            .inflate(R.layout.lang_item, viewGroup, false)
+            .inflate(R.layout.voca_item, viewGroup, false)
 
         return ViewHolder(view)
     }
@@ -45,7 +47,9 @@ class VocabularyAdapter(private var dataSet: List<Vocabulary>,
         val vocabulary = dataSet[position]
         viewHolder.tvEnglish.text = vocabulary.english
         viewHolder.tvVietnamese.text = vocabulary.vietnamese
-        viewHolder.ivDelete.setOnClickListener{
+        viewHolder.tvWrongCount.text = vocabulary.wrongCount.toString()
+
+        viewHolder.ivDelete.setOnClickListener {
             onDeleteListener(vocabulary)
         }
     }

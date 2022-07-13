@@ -8,5 +8,6 @@ import androidx.room.PrimaryKey
 data class Vocabulary(
     @PrimaryKey(autoGenerate = true) val id: Int? = null,
     @ColumnInfo(name = "english") val english: String?,
-    @ColumnInfo(name = "vietnamese") val vietnamese: String?
+    @ColumnInfo(name = "vietnamese") val vietnamese: String?,
+    @ColumnInfo(name = "wrong_count") val wrongCount: Int
 )
