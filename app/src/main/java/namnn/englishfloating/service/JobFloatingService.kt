@@ -22,7 +22,8 @@ public class JobFloatingService : JobService() {
     }
 
     override fun onStopJob(params: JobParameters?): Boolean {
-        return true;
+        stopSelf()
+        return true
 
     }
 }

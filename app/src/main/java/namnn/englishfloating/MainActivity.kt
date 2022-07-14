@@ -1,10 +1,7 @@
 package namnn.englishfloating
 
 import android.app.Activity
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
@@ -22,15 +19,18 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import namnn.englishfloating.Service.FloatingViewService
 import namnn.englishfloating.adapter.VocabularyAdapter
+import namnn.englishfloating.broadcast.MyStartServiceReceiver
 import namnn.englishfloating.database.AppDatabase
 import namnn.englishfloating.database.dao.VocabularyDAO
 import namnn.englishfloating.database.entity.Vocabulary
-import namnn.englishfloating.service.MyStartServiceReceiver
+import namnn.englishfloating.dialog.AddVocabularyDialog
+import namnn.englishfloating.dialog.FloatingSchedulerSettingsDialog
+import namnn.englishfloating.util.Util
 
 
 class MainActivity : AppCompatActivity() {
     private val CODE_DRAW_OVER_OTHER_APP_PERMISSION = 2048
-    val br: BroadcastReceiver = MyStartServiceReceiver()
+    lateinit var br: BroadcastReceiver
 
     private lateinit var viewGroup: ViewGroup
 
@@ -38,16 +38,23 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vocabularies: List<Vocabulary>
     private lateinit var vocabularyDAO: VocabularyDAO
 
+    private lateinit var addDialog: AddVocabularyDialog
+    private lateinit var schedulerDialog: FloatingSchedulerSettingsDialog
+
+    private lateinit var sharePref: SharedPreferences
+
     private var isSortWrongCount = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        viewGroup =
-            (findViewById<View>(android.R.id.content) as ViewGroup).getChildAt(0) as ViewGroup
-
         // Initial
+        val ref = this
+        br = MyStartServiceReceiver()
+
+        sharePref = getSharedPreferences("ENGLISH_FLOATING", Context.MODE_PRIVATE)
+
         val db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, "english_db",
@@ -56,7 +63,43 @@ class MainActivity : AppCompatActivity() {
 
         vocabularyDAO = db.languageDao()
 
-        val ref = this
+        viewGroup =
+            (findViewById<View>(android.R.id.content) as ViewGroup).getChildAt(0) as ViewGroup
+
+        schedulerDialog = FloatingSchedulerSettingsDialog(sharePref, startScheduler = {
+            if (vocabularies.count() < 4) {
+                viewGroup.snack("Need more than 4 vocabularies to start scheduler test")
+                return@FloatingSchedulerSettingsDialog
+            }
+            val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION).apply {
+                addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
+            }
+            try {
+                registerReceiver(br, filter)
+            } catch (e: IllegalArgumentException) {
+                e.printStackTrace()
+            }
+            viewGroup.snack("Start job scheduler for float")
+        }, stopScheduler = {
+            try {
+                unregisterReceiver(br)
+                Util.cancelScheduleJob(this)
+            } catch (e: IllegalArgumentException) {
+                e.printStackTrace()
+            }
+            viewGroup.snack("Stop job scheduler for float")
+        })
+
+        addDialog = AddVocabularyDialog(vocabularyDAO, addSuccess = {
+            vocabularies = vocabularyDAO.getALL()
+            langAdapter.setData(vocabularies)
+            langAdapter.notifyDataSetChanged()
+        }, showSnack = {
+            viewGroup.snack(it)
+        }, hideKeyboard = {
+
+        })
+
 //        lifecycleScope.launch(Dispatchers.IO) {
 //            languages = db.languageDao().getALL()
 //
@@ -83,27 +126,8 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = LinearLayoutManager(ref)
 
         btnAdd.setOnClickListener {
-            var snackTxt = "";
-            if (vocabularyDAO.checkEnglishExist(et_english.text.toString())) {
-                snackTxt = "Vocabulary already exists"
-            } else {
-                if (et_english.text.toString().isBlank() || et_vietnamese.text.toString().isBlank()
-                ) {
-                    snackTxt = "English and Vietnamese cannot be left blank"
-                } else {
-                    val newLang =
-                        Vocabulary(null, et_english.text.toString(), et_vietnamese.text.toString(), 0)
-                    vocabularyDAO.insert(newLang)
 
-                    vocabularies = vocabularyDAO.getALL()
-                    langAdapter.setData(vocabularies)
-                    langAdapter.notifyDataSetChanged()
-                    snackTxt = "Add new vocabulary success"
-                }
-            }
-            clearEt()
-            viewGroup.snack(snackTxt)
-            closeKeyboard()
+            addDialog.show(supportFragmentManager, "add dialog")
         }
 
         btn_sort_by_wrong_count.setOnClickListener {
@@ -147,29 +171,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         iv_start_scheduler.setOnClickListener {
-            if (vocabularies.count() < 4) {
-                viewGroup.snack("Need more than 4 vocabularies to start scheduler test")
-                return@setOnClickListener
-            }
-            val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION).apply {
-                addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
-            }
-            try {
-                registerReceiver(br, filter)
-            } catch (e: IllegalArgumentException) {
-                e.printStackTrace()
-            }
-            viewGroup.snack("Start job scheduler for float")
-        }
-
-        tv_stop_scheduler.setOnClickListener {
-            try {
-                unregisterReceiver(br)
-            } catch (e: IllegalArgumentException) {
-                e.printStackTrace()
-            }
-
-            viewGroup.snack("Stop job scheduler for float")
+            schedulerDialog.show(supportFragmentManager, "scheduler dialog")
         }
     }
 
@@ -189,8 +191,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearEt() {
-        et_english.text?.clear()
-        et_vietnamese.text?.clear()
+//        et_english.text?.clear()
+//        et_vietnamese.text?.clear()
     }
 
     private fun closeKeyboard() {

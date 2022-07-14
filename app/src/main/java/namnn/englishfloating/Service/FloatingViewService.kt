@@ -10,10 +10,7 @@ import android.content.Intent
 import android.graphics.Path
 import android.graphics.PixelFormat
 import android.media.MediaPlayer
-import android.os.Build
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
+import android.os.*
 import android.util.Log
 import android.view.*
 import android.view.View.OnTouchListener
@@ -29,6 +26,7 @@ import namnn.englishfloating.R
 import namnn.englishfloating.database.AppDatabase
 import namnn.englishfloating.database.dao.VocabularyDAO
 import namnn.englishfloating.database.entity.Vocabulary
+import kotlin.random.Random
 
 
 class FloatingViewService : Service() {
@@ -89,6 +87,8 @@ class FloatingViewService : Service() {
 
     private var animRunning = false
     private var isExpanded = false
+
+    private var isQuestionEnglish = true
 
     private var maxTestCount = 10
     private var currentTestCount = 0
@@ -439,10 +439,6 @@ class FloatingViewService : Service() {
                                 }
                             }
 
-                            Log.d(
-                                "TAGG",
-                                "ACTION_MOVE  Xdiff ${Xdiff}  Ydiff ${Ydiff} + outSideView $outSideView"
-                            )
                             //The check for Xdiff <10 && YDiff< 10 because sometime elements moves a little while clicking.
                             //So that is click event.
                             if (Xdiff < 5 && Ydiff < 5 && Xdiff > -5 && Ydiff > -5) {
@@ -453,7 +449,7 @@ class FloatingViewService : Service() {
                                     collapsedView.visibility = View.GONE
                                     expandedView.visibility = View.VISIBLE
                                     if (!isExpanded) {
-                                        Log.d("AAAAAAAAAAAAAAA", isExpanded.toString())
+                                        Log.d("isExpanded = true", isExpanded.toString())
                                         getQuestion(englishTv, vocabularyDAO)
                                         isExpanded = true
                                         ivDot.visibility = View.GONE
@@ -553,64 +549,117 @@ class FloatingViewService : Service() {
     }
 
     private fun getQuestion(tv: TextView, vocabularyDAO: VocabularyDAO) {
+        Log.d(
+            "TAGGGGG",
+            "getQuestion"
+        )
+        val ran = Random.nextInt(0, 100)
+        Toast.makeText(this, " ran " + ran, Toast.LENGTH_SHORT).show()
+        isQuestionEnglish = ran >= 50
+
         currentVocabulary = if (currentVocabulary == null) {
             vocabularyDAO.getRandomEnglish()
         } else {
             vocabularyDAO.getRandomEnglishAvoidId(currentVocabulary!!.id!!)
         }
         currentVocabulary = vocabularyDAO.getRandomEnglish()
-//        Handler(Looper.getMainLooper()).post { tv.text = currentLanguage.english }
-        tv.text = currentVocabulary!!.english
-        val wrongLanguage =
-            vocabularyDAO.getRandomEnglishWithoutCurrentEnglish(currentVocabulary!!.id!!)
-        wrongLanguage.add(currentVocabulary!!.vietnamese!!)
-        wrongLanguage.shuffle()
-        for (i in wrongLanguage.indices) {
-            answerButtonList[i].text = wrongLanguage[i]
+
+        if (isQuestionEnglish) {
+            tv.text = currentVocabulary!!.english
+            val wrongLanguage =
+                vocabularyDAO.getRandomEnglishWithoutCurrentEnglish(currentVocabulary!!.id!!)
+            wrongLanguage.add(currentVocabulary!!)
+            wrongLanguage.shuffle()
+            for (i in wrongLanguage.indices) {
+                answerButtonList[i].text = wrongLanguage[i].vietnamese
+            }
+        } else {
+            tv.text = currentVocabulary!!.vietnamese
+            val wrongLanguage =
+                vocabularyDAO.getRandomEnglishWithoutCurrentEnglish(currentVocabulary!!.id!!)
+            wrongLanguage.add(currentVocabulary!!)
+            wrongLanguage.shuffle()
+            for (i in wrongLanguage.indices) {
+                answerButtonList[i].text = wrongLanguage[i].english
+            }
         }
     }
 
     private fun checkQuestion() {
+        Log.d(
+            "TAGGGGG",
+            "checkQuestion"
+        )
         isCheckQuestion = true
         val handler = Handler(Looper.getMainLooper())
         handler.postDelayed({
             for (item in answerButtonList) {
                 val answerText = item.text.toString()
-                if (currentVocabulary!!.vietnamese.equals(answerText)) {
-                    setStateBtnAnswer(item, ButtonState.CORRECT)
-                    if (textSelected == answerText) {
-                        // select correct
-                        successSound.start()
-                        currentTestCount++
-                        testCountTv.text =  "${currentTestCount}/${maxTestCount}"
-                        if (maxTestCount == currentTestCount) {
-                            // end test
-                            stopSelf()
-                            currentTestCount = 0
-                        }
-                        val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
-                            currentVocabulary!!.wrongCount - 1
+                if (isQuestionEnglish) {
+                    if (currentVocabulary!!.vietnamese.equals(answerText)) {
+                        setStateBtnAnswer(item, ButtonState.CORRECT)
+                        if (textSelected == answerText) {
+                            // select correct
+                            successSound.start()
+                            currentTestCount++
+                            testCountTv.text =  "${currentTestCount}/${maxTestCount}"
+                            if (maxTestCount == currentTestCount) {
+                                // end test
+                                stopSelf()
+                                currentTestCount = 0
+                            }
+                            val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
+                                currentVocabulary!!.wrongCount - 1
+                            } else {
+                                0
+                            }
+                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
                         } else {
-                            0
+                            val newWrongCount = currentVocabulary!!.wrongCount + 1
+                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
                         }
-                        vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
-                    } else {
-                        val newWrongCount = currentVocabulary!!.wrongCount + 1
-                        vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+                    }
+                } else {
+                    if (currentVocabulary!!.english.equals(answerText)) {
+                        setStateBtnAnswer(item, ButtonState.CORRECT)
+                        if (textSelected == answerText) {
+                            // select correct
+                            successSound.start()
+                            currentTestCount++
+                            testCountTv.text =  "${currentTestCount}/${maxTestCount}"
+                            if (maxTestCount == currentTestCount) {
+                                // end test
+                                stopSelf()
+                                currentTestCount = 0
+                            }
+                            val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
+                                currentVocabulary!!.wrongCount - 1
+                            } else {
+                                0
+                            }
+                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+                        } else {
+                            val newWrongCount = currentVocabulary!!.wrongCount + 1
+                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+                        }
                     }
                 }
-                setAllBtnDefault()
             }
+            setAllBtnDefault()
         }, 500)
     }
 
     private fun setAllBtnDefault() {
+        Log.d(
+            "TAGGGGG",
+            "setAllBtnDefault"
+        )
         val handler = Handler(Looper.getMainLooper())
         handler.postDelayed({
             for (item in answerButtonList) {
                 setStateBtnAnswer(item, ButtonState.DEFAULT)
-                getQuestion(englishTv, vocabularyDAO)
             }
+            getQuestion(englishTv, vocabularyDAO)
             isCheckQuestion = false
         }, 1500)
     }

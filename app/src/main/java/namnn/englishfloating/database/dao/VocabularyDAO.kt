@@ -18,8 +18,8 @@ interface VocabularyDAO {
     fun getRandomEnglishAvoidId(id: Int): Vocabulary
 
 //    @Query("SELECT vietnamese FROM language WHERE id not in (SELECT id LIKE :id FROM language) ORDER BY RANDOM() LIMIT 3")
-    @Query("SELECT vietnamese FROM language WHERE id <> :id ORDER BY RANDOM() LIMIT 3")
-    fun getRandomEnglishWithoutCurrentEnglish(id: Int): MutableList<String>
+    @Query("SELECT * FROM language WHERE id <> :id ORDER BY RANDOM() LIMIT 3")
+    fun getRandomEnglishWithoutCurrentEnglish(id: Int): MutableList<Vocabulary>
 
     @Query("SELECT * FROM language WHERE english LIKE :english LIMIT 1")
     fun findByEnglish(english: String): Vocabulary

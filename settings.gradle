@@ -1,2 +1,3 @@
 rootProject.name = "EnglishFloating"
 include ':app'
+include ':translate'

@@ -1,0 +1,8 @@
+com/mannan/translateapi/BuildConfig.java
+ com.mannan.translateapi.BuildConfig
+com/mannan/translateapi/Language.java
+ com.mannan.translateapi.Language
+com/mannan/translateapi/TranslateAPI.java
+ com.mannan.translateapi.TranslateAPI
+ com.mannan.translateapi.TranslateAPI$Async
+ com.mannan.translateapi.TranslateAPI$TranslateListener
