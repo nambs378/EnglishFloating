@@ -5,6 +5,8 @@ import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
 import android.view.View
+import android.view.Window
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
@@ -25,8 +27,8 @@ class AddVocabularyDialog(
 ) : DialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val inflater = requireActivity().layoutInflater
-
         val view = inflater.inflate(R.layout.dialog_add_vocabulary, null)
+
         val etEnglish = view.findViewById<View>(R.id.dialog_et_english) as EditText
         val etVietnamese = view.findViewById<View>(R.id.dialog_et_vietnamese) as EditText
 
@@ -90,6 +92,14 @@ class AddVocabularyDialog(
         val imm: InputMethodManager =
             view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(view.windowToken, 0)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val window: Window? = dialog!!.window
+        val windowParams: WindowManager.LayoutParams = window!!.attributes
+        windowParams.dimAmount = 0.0f
+        window.attributes = windowParams
     }
 
 }

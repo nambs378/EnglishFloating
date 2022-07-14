@@ -298,10 +298,6 @@ class FloatingViewService : Service() {
                 mCenterWidth = size.bounds.width() / 2
                 mWidthWidget = width
                 mHeightWidget = layout.measuredHeight
-                Log.d(
-                    "TAGG",
-                    "width $mWidthScreen screen size ${size.bounds.width()} height ${size.bounds.height()} "
-                )
 
                 path.moveTo(
                     ((mCenterWidth - imageCloseWidth / 2).toFloat()),
@@ -499,10 +495,6 @@ class FloatingViewService : Service() {
                 backgroundGradientClose.viewTreeObserver.removeOnGlobalLayoutListener(this)
                 backgroundGradientWidth = backgroundGradientClose.measuredWidth
                 backgroundGradientHeight = backgroundGradientClose.measuredHeight
-                Log.d(
-                    "TAGG",
-                    "Background width ${backgroundGradientClose.measuredWidth} , height ${backgroundGradientClose.measuredHeight}"
-                )
             }
 
         })
@@ -549,12 +541,7 @@ class FloatingViewService : Service() {
     }
 
     private fun getQuestion(tv: TextView, vocabularyDAO: VocabularyDAO) {
-        Log.d(
-            "TAGGGGG",
-            "getQuestion"
-        )
         val ran = Random.nextInt(0, 100)
-        Toast.makeText(this, " ran " + ran, Toast.LENGTH_SHORT).show()
         isQuestionEnglish = ran >= 50
 
         currentVocabulary = if (currentVocabulary == null) {

@@ -34,7 +34,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="3"
-                android:text="Time per test (Default 1 hour)"
+                android:text="Time for test (Minute)"
                 android:textColor="@color/white"
                 android:textSize="18sp" />
 
@@ -48,23 +48,9 @@
                     android:id="@+id/dialog_et_time"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="text"
+                    android:inputType="number|numberDecimal"
                     android:layout_gravity="center_vertical"
                     android:maxLines="1" />
-
-                <FrameLayout
-                    android:id="@+id/dialog_btn_english_clear"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_gravity="right|center_vertical"
-                    >
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:layout_gravity="center"
-                        android:background="@drawable/ic_close"/>
-                </FrameLayout>
 
             </FrameLayout>
 

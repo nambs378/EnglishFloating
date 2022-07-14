@@ -15,7 +15,7 @@ public class Util {
 
             val serviceComponent = ComponentName(context, JobFloatingService::class.java)
             val builder = JobInfo.Builder(0, serviceComponent)
-            val time = sharedPreference.getLong("TIME",1) * 60 * 60 * 1000
+            val time = sharedPreference.getLong("TIME",30) * 60 * 1000
             builder.setMinimumLatency(time)
             //builder.setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED); // require unmetered network
             //builder.setRequiresDeviceIdle(true); // device should be idle
