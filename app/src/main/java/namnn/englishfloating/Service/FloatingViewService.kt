@@ -42,7 +42,6 @@ class FloatingViewService : Service() {
     private lateinit var mFloatingView: View
     private lateinit var collapsedView: View
     private lateinit var expandedView: View
-    private lateinit var viewPager2: ViewPager2
     private lateinit var imageClose: ImageView
     private lateinit var backgroundGradientClose: View
 
@@ -93,10 +92,13 @@ class FloatingViewService : Service() {
     private var maxTestCount = 10
     private var currentTestCount = 0
     private var isCheckQuestion = false
+    private var isTestImportant = false
 
     @SuppressLint("NewApi")
     override fun onCreate() {
         super.onCreate()
+
+        isTestImportant = Random.nextInt(0, 100) >= 50
 
         if (Build.VERSION.SDK_INT >= 26) {
             val CHANNEL_ID = "my_channel_01"
@@ -109,15 +111,14 @@ class FloatingViewService : Service() {
             val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
 
-
             val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Vocabulary test")
                 .setSmallIcon(R.drawable.ic_island_forest)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentText("Time to take the vocabulary test").build()
             notificationManager.notify(1, notification)
             startForeground(1, notification)
         }
-
 
         successSound = MediaPlayer.create(this, R.raw.sound_success)
         floatingStartSound = MediaPlayer.create(this, R.raw.sound_start)
@@ -131,7 +132,7 @@ class FloatingViewService : Service() {
         floatViewParams.gravity =
             Gravity.TOP or Gravity.LEFT //Initially view will be added to top-left corner
         floatViewParams.x = 0
-        floatViewParams.y = 100
+        floatViewParams.y = 150
 
         mWindowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
@@ -156,67 +157,6 @@ class FloatingViewService : Service() {
         collapsedView = mFloatingView.findViewById(R.id.collapse_view)
         expandedView = mFloatingView.findViewById(R.id.expanded_container)
 
-        //Set the close button
-//        val closeButtonCollapsed: ImageView = mFloatingView.findViewById<View>(R.id.close_btn) as ImageView
-//        closeButtonCollapsed.setOnClickListener(View.OnClickListener { //close the service and remove the from from the window
-//            stopSelf()
-//        })
-
-
-        /*  //Set the view while floating view is expanded.
-          //Set the play button.
-          val playButton = mFloatingView!!.findViewById<View>(R.id.play_btn) as ImageView
-          playButton.setOnClickListener {
-              Toast.makeText(this@FloatingViewService, "Playing the song.", Toast.LENGTH_LONG)
-                  .show()
-          }
-
-          //Set the next button.
-
-          //Set the next button.
-          val nextButton = mFloatingView!!.findViewById<View>(R.id.next_btn) as ImageView
-          nextButton.setOnClickListener {
-              Toast.makeText(this@FloatingViewService, "Playing next song.", Toast.LENGTH_LONG)
-                  .show()
-          }
-
-
-          //Set the pause button.
-
-
-          //Set the pause button.
-          val prevButton = mFloatingView!!.findViewById<View>(R.id.prev_btn) as ImageView
-          prevButton.setOnClickListener {
-              Toast.makeText(
-                  this@FloatingViewService,
-                  "Playing previous song.",
-                  Toast.LENGTH_LONG
-              ).show()
-          }
-
-
-          //Set the close button
-
-
-          //Set the close button
-          val closeButton = mFloatingView!!.findViewById<View>(R.id.close_button) as ImageView
-          closeButton.setOnClickListener {
-              collapsedView.visibility = View.VISIBLE
-              expandedView.visibility = View.GONE
-          }
-
-
-          //Open the application on thi button click
-          val openButton = mFloatingView!!.findViewById<View>(R.id.open_button) as ImageView
-          openButton.setOnClickListener { //Open the application  click.
-              val intent = Intent(this@FloatingViewService, MainActivity::class.java)
-              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-              startActivity(intent)
-
-
-              //close the service and remove view from the view hierarchy
-              stopSelf()
-          }*/
 
         val homeButton = mFloatingView.findViewById<View>(R.id.btn_home) as Button
         homeButton.setOnClickListener {
@@ -241,6 +181,12 @@ class FloatingViewService : Service() {
         ).fallbackToDestructiveMigration().allowMainThreadQueries().build()
         vocabularyDAO = db.languageDao()
 
+        val vocaImportant = vocabularyDAO.getImportant()
+
+        if (vocaImportant.count() < 5) {
+            isTestImportant = false
+        }
+        Log.d("AAAAAAABB", "count : " + vocaImportant.count() +  " " + isTestImportant.toString())
         englishTv = mFloatingView.findViewById<View>(R.id.floating_tv_english) as TextView
         testCountTv = mFloatingView.findViewById<View>(R.id.floating_tv_test_count) as TextView
         ivDot = mFloatingView.findViewById<View>(R.id.iv_dot) as ImageView
@@ -541,31 +487,44 @@ class FloatingViewService : Service() {
     }
 
     private fun getQuestion(tv: TextView, vocabularyDAO: VocabularyDAO) {
-        val ran = Random.nextInt(0, 100)
-        isQuestionEnglish = ran >= 50
 
-        currentVocabulary = if (currentVocabulary == null) {
-            vocabularyDAO.getRandomEnglish()
+        var wrongLanguage : MutableList<Vocabulary>
+
+        if (isTestImportant) {
+            val ran = Random.nextInt(0, 100)
+            isQuestionEnglish = ran >= 40
+
+            currentVocabulary = if (currentVocabulary == null) {
+                vocabularyDAO.getRandomEnglishImportant()
+            } else {
+                vocabularyDAO.getRandomEnglishImportantAvoidId(currentVocabulary!!.id!!)
+            }
+            wrongLanguage =
+                vocabularyDAO.getRandomEnglishImportantWithoutCurrentEnglish(currentVocabulary!!.id!!)
+            wrongLanguage.add(currentVocabulary!!)
+            wrongLanguage.shuffle()
         } else {
-            vocabularyDAO.getRandomEnglishAvoidId(currentVocabulary!!.id!!)
-        }
-        currentVocabulary = vocabularyDAO.getRandomEnglish()
+            val ran = Random.nextInt(0, 100)
+            isQuestionEnglish = ran >= 40
 
-        if (isQuestionEnglish) {
-            tv.text = currentVocabulary!!.english
-            val wrongLanguage =
+            currentVocabulary = if (currentVocabulary == null) {
+                vocabularyDAO.getRandomEnglish()
+            } else {
+                vocabularyDAO.getRandomEnglishAvoidId(currentVocabulary!!.id!!)
+            }
+            wrongLanguage =
                 vocabularyDAO.getRandomEnglishWithoutCurrentEnglish(currentVocabulary!!.id!!)
             wrongLanguage.add(currentVocabulary!!)
             wrongLanguage.shuffle()
+
+        }
+        if (isQuestionEnglish) {
+            tv.text = currentVocabulary!!.english
             for (i in wrongLanguage.indices) {
                 answerButtonList[i].text = wrongLanguage[i].vietnamese
             }
         } else {
             tv.text = currentVocabulary!!.vietnamese
-            val wrongLanguage =
-                vocabularyDAO.getRandomEnglishWithoutCurrentEnglish(currentVocabulary!!.id!!)
-            wrongLanguage.add(currentVocabulary!!)
-            wrongLanguage.shuffle()
             for (i in wrongLanguage.indices) {
                 answerButtonList[i].text = wrongLanguage[i].english
             }
@@ -573,10 +532,6 @@ class FloatingViewService : Service() {
     }
 
     private fun checkQuestion() {
-        Log.d(
-            "TAGGGGG",
-            "checkQuestion"
-        )
         isCheckQuestion = true
         val handler = Handler(Looper.getMainLooper())
         handler.postDelayed({
@@ -589,21 +544,26 @@ class FloatingViewService : Service() {
                             // select correct
                             successSound.start()
                             currentTestCount++
-                            testCountTv.text =  "${currentTestCount}/${maxTestCount}"
+                            Log.d("AAAAAAA", "currentTestCount " + currentTestCount)
+                            testCountTv.text = "${currentTestCount}/${maxTestCount}"
                             if (maxTestCount == currentTestCount) {
                                 // end test
-                                stopSelf()
+                                Toast.makeText(this, "Done", Toast.LENGTH_SHORT).show()
                                 currentTestCount = 0
+                                stopSelf()
                             }
-                            val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
-                                currentVocabulary!!.wrongCount - 1
-                            } else {
-                                0
-                            }
-                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+//                            val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
+//                                currentVocabulary!!.wrongCount - 1
+//                            } else {
+//                                0
+//                            }
+//                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
                         } else {
                             val newWrongCount = currentVocabulary!!.wrongCount + 1
-                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+                            vocabularyDAO.updateWrongCountById(
+                                currentVocabulary!!.id!!,
+                                newWrongCount
+                            )
                         }
                     }
                 } else {
@@ -613,21 +573,26 @@ class FloatingViewService : Service() {
                             // select correct
                             successSound.start()
                             currentTestCount++
-                            testCountTv.text =  "${currentTestCount}/${maxTestCount}"
+                            Log.d("AAAAAAA", "currentTestCount " + currentTestCount)
+                            testCountTv.text = "${currentTestCount}/${maxTestCount}"
                             if (maxTestCount == currentTestCount) {
                                 // end test
-                                stopSelf()
+                                Toast.makeText(this, "Done", Toast.LENGTH_SHORT).show()
                                 currentTestCount = 0
+                                stopSelf()
                             }
-                            val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
-                                currentVocabulary!!.wrongCount - 1
-                            } else {
-                                0
-                            }
-                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+//                            val newWrongCount : Int = if (currentVocabulary!!.wrongCount > 0) {
+//                                currentVocabulary!!.wrongCount - 1
+//                            } else {
+//                                0
+//                            }
+//                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
                         } else {
                             val newWrongCount = currentVocabulary!!.wrongCount + 1
-                            vocabularyDAO.updateWrongCountById(currentVocabulary!!.id!!, newWrongCount)
+                            vocabularyDAO.updateWrongCountById(
+                                currentVocabulary!!.id!!,
+                                newWrongCount
+                            )
                         }
                     }
                 }
@@ -648,7 +613,7 @@ class FloatingViewService : Service() {
             }
             getQuestion(englishTv, vocabularyDAO)
             isCheckQuestion = false
-        }, 1500)
+        }, 1000)
     }
 
     private fun setStateBtnAnswer(btn: TextView, state: ButtonState) {

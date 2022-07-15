@@ -72,7 +72,7 @@ class AddVocabularyDialog(
                     hideKeyboardInAndroidFragment(view)
                 } else {
                     val newLang =
-                        Vocabulary(null, etEnglish.text.toString(), etVietnamese.text.toString(), 0)
+                        Vocabulary(null, etEnglish.text.toString(), etVietnamese.text.toString(), 0, false)
                     vocabularyDAO.insert(newLang)
                     addSuccess.invoke()
                     snackTxt = "Add new vocabulary success"

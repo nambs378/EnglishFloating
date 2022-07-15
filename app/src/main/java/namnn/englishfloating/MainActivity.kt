@@ -44,10 +44,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sharePref: SharedPreferences
 
     private var isSortWrongCount = false
+    private var isSortStar = false
+
+    private lateinit var sortState : Sort
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        sortState = Sort.ALL
 
         // Initial
         val ref = this
@@ -113,13 +119,15 @@ class MainActivity : AppCompatActivity() {
 
         vocabularies = vocabularyDAO.getALL()
 
-        langAdapter = VocabularyAdapter(vocabularies, onDeleteListener = {
+        langAdapter = VocabularyAdapter(this ,vocabularies, onDeleteListener = {
             vocabularyDAO.delete(it)
 
             vocabularies = vocabularyDAO.getALL()
             langAdapter.setData(vocabularies)
             langAdapter.notifyDataSetChanged()
             viewGroup.snack("Delete vocabulary success")
+        }, onImportantListener = {
+            vocabularyDAO.updateImportantById(it.id!!, it.important)
         })
 
         rv.adapter = langAdapter
@@ -130,18 +138,26 @@ class MainActivity : AppCompatActivity() {
             addDialog.show(supportFragmentManager, "add dialog")
         }
 
+        btn_sort_by_star.setOnClickListener {
+            isSortStar = !isSortStar
+            isSortWrongCount = false
+
+            if (isSortStar) {
+                setSortState(Sort.IMPORTANT)
+            } else {
+                setSortState(Sort.ALL)
+            }
+        }
+
         btn_sort_by_wrong_count.setOnClickListener {
             isSortWrongCount = !isSortWrongCount
+            isSortStar = false
 
             if (isSortWrongCount) {
-                vocabularies = vocabularyDAO.getALLOrderByWrongCount()
-                iv_line.visibility = View.INVISIBLE
+                setSortState(Sort.WRONG)
             } else {
-                vocabularies = vocabularyDAO.getALL()
-                iv_line.visibility = View.VISIBLE
+                setSortState(Sort.ALL)
             }
-            langAdapter.setData(vocabularies)
-            langAdapter.notifyDataSetChanged()
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
@@ -186,35 +202,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun View.snack(message: String, duration: Int = Snackbar.LENGTH_LONG) {
+    private fun View.snack(message: String, duration: Int = Snackbar.LENGTH_LONG) {
         Snackbar.make(this, message, duration).show()
     }
 
-    private fun clearEt() {
-//        et_english.text?.clear()
-//        et_vietnamese.text?.clear()
-    }
-
-    private fun closeKeyboard() {
-        // this will give us the view
-        // which is currently focus
-        // in this layout
-        val view = this.currentFocus
-
-        // if nothing is currently
-        // focus then this will protect
-        // the app from crash
-        if (view != null) {
-
-            // now assign the system
-            // service to InputMethodManager
-            val manager: InputMethodManager = getSystemService(
-                Context.INPUT_METHOD_SERVICE
-            ) as InputMethodManager
-            manager
-                .hideSoftInputFromWindow(
-                    view.windowToken, 0
-                )
+    private fun setSortState(state: Sort) {
+        when (state) {
+            Sort.ALL -> {
+                vocabularies = vocabularyDAO.getALL()
+                iv_wrong_line.visibility = View.VISIBLE
+                iv_line_star.visibility = View.VISIBLE
+            }
+            Sort.IMPORTANT -> {
+                vocabularies = vocabularyDAO.getImportant()
+                iv_line_star.visibility = View.INVISIBLE
+                iv_wrong_line.visibility = View.VISIBLE
+            }
+            Sort.WRONG -> {
+                vocabularies = vocabularyDAO.getALLOrderByWrongCount()
+                iv_line_star.visibility = View.VISIBLE
+                iv_wrong_line.visibility = View.INVISIBLE
+            }
         }
+        langAdapter.setData(vocabularies)
+        langAdapter.notifyDataSetChanged()
     }
+}
+
+enum class Sort {
+    ALL,
+    IMPORTANT,
+    WRONG
 }

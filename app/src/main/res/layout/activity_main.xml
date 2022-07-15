@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="#171717"
     tools:context=".MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -63,6 +64,31 @@
             android:text="Add"/>
 
         <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/btn_sort_by_star"
+            android:layout_width="@dimen/_25sdp"
+            android:layout_height="@dimen/_25sdp"
+            app:layout_constraintEnd_toStartOf="@+id/btn_sort_by_wrong_count"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginEnd="10dp"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:layout_width="@dimen/_20sdp"
+                android:layout_height="@dimen/_20sdp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:background="@drawable/ic_star_selected" />
+
+            <ImageView
+                android:id="@+id/iv_line_star"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_line" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/btn_sort_by_wrong_count"
             android:layout_width="@dimen/_25sdp"
             android:layout_height="@dimen/_25sdp"
@@ -81,7 +107,7 @@
                 android:background="@drawable/ic_warning" />
 
             <ImageView
-                android:id="@+id/iv_line"
+                android:id="@+id/iv_wrong_line"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@drawable/bg_line" />
